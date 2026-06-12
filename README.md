@@ -1,4 +1,4 @@
-# Computer Vision YOLO Projects
+# Computer Vision YOLO Projects (computer_vision_yolo)
 
 This repository contains computer vision projects focusing on real-time object detection using YOLO models. 
 
