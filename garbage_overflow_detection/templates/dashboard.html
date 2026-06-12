@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+    dashboard.html — Live Detection Dashboard
+    ==========================================
+    Premium real-time dashboard with live video feed,
+    animated stat cards, fill-level gauge, events table,
+    and analytics charts.
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Live garbage overflow detection dashboard with real-time video feed and analytics">
+    <title>Dashboard — OverflowAI</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <span class="nav-brand-icon">🗑️</span>
+                OverflowAI
+            </a>
+
+            <div class="nav-status">
+                <span class="status-dot" id="system-status-dot"></span>
+                <span id="system-status-text">Live</span>
+            </div>
+
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+        </div>
+    </nav>
+
+    <!-- ==================== PAGE HEADER ==================== -->
+    <div class="page-header">
+        <div class="container">
+            <h1>Live <span class="text-gradient">Dashboard</span></h1>
+            <p>Real-time garbage bin monitoring and overflow detection</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ==================== STATS ROW ==================== -->
+        <div class="stats-row">
+            <!-- Total Bins -->
+            <div class="stat-card" id="card-total">
+                <div class="stat-card-accent blue"></div>
+                <div class="stat-card-top">
+                    <div class="stat-card-icon" style="background:rgba(88,166,255,0.1); color:var(--accent-blue);">📦</div>
+                    <span class="stat-card-trend up">
+                        <span>↑</span> Live
+                    </span>
+                </div>
+                <div class="stat-value text-blue" id="stat-total">{{ stats.total_bins }}</div>
+                <div class="stat-label">Total Bins Detected</div>
+            </div>
+
+            <!-- Overflow -->
+            <div class="stat-card" id="card-overflow">
+                <div class="stat-card-accent red"></div>
+                <div class="stat-card-top">
+                    <div class="stat-card-icon" style="background:rgba(248,81,73,0.1); color:var(--accent-red);">🚨</div>
+                </div>
+                <div class="stat-value text-red" id="stat-overflow">{{ stats.overflow_count }}</div>
+                <div class="stat-label">Overflow Alerts</div>
+            </div>
+
+            <!-- Near Full -->
+            <div class="stat-card" id="card-near-full">
+                <div class="stat-card-accent orange"></div>
+                <div class="stat-card-top">
+                    <div class="stat-card-icon" style="background:rgba(210,153,34,0.1); color:var(--accent-orange);">⚠️</div>
+                </div>
+                <div class="stat-value text-orange" id="stat-near-full">{{ stats.near_full_count }}</div>
+                <div class="stat-label">Near Full</div>
+            </div>
+
+            <!-- OK -->
+            <div class="stat-card" id="card-ok">
+                <div class="stat-card-accent green"></div>
+                <div class="stat-card-top">
+                    <div class="stat-card-icon" style="background:rgba(63,185,80,0.1); color:var(--accent-green);">✅</div>
+                </div>
+                <div class="stat-value text-green" id="stat-ok">{{ stats.ok_count }}</div>
+                <div class="stat-label">OK Status</div>
+            </div>
+        </div>
+
+        <!-- ==================== MAIN GRID ==================== -->
+        <div class="dashboard-grid">
+            <!-- Left: Video Feed -->
+            <div>
+                <div class="video-panel">
+                    <div class="video-panel-header">
+                        <div class="video-panel-title">
+                            📹 Detection Feed
+                        </div>
+                        <div class="live-badge">
+                            <span class="live-badge-dot"></span>
+                            LIVE
+                        </div>
+                    </div>
+
+                    <div class="video-feed-container" id="video-container">
+                        <img src="/video_feed" alt="Live Detection Feed" id="video-stream"
+                             onerror="this.style.display='none'; document.getElementById('video-fallback').style.display='flex';">
+                        <div class="video-placeholder" id="video-fallback" style="display:none;">
+                            <div class="video-placeholder-icon">📹</div>
+                            <div>Waiting for detection feed...</div>
+                            <div style="font-size:0.75rem;">Start <code>detect.py</code> or use <code>--with-detection</code></div>
+                        </div>
+                        <div class="video-fps" id="fps-display">FPS: {{ stats.fps }}</div>
+                    </div>
+                </div>
+
+                <!-- Events Table below video -->
+                <div class="events-panel" style="margin-top: var(--space-xl);">
+                    <div class="events-panel-header">
+                        <div class="events-panel-title">
+                            📋 Recent Events
+                        </div>
+                        <span class="events-count" id="events-count">{{ events|length }}</span>
+                    </div>
+
+                    <div class="events-table-wrap">
+                        <table class="events-table" id="events-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Bin ID</th>
+                                    <th>Location</th>
+                                    <th>Fill %</th>
+                                    <th>Status</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="events-tbody">
+                                {% for event in events %}
+                                <tr>
+                                    <td class="timestamp">{{ event.timestamp }}</td>
+                                    <td>#{{ event.bin_id }}</td>
+                                    <td>{{ event.location }}</td>
+                                    <td>{{ event.fill_percent }}%</td>
+                                    <td>
+                                        {% if event.status == 'OVERFLOW' %}
+                                            <span class="status-pill overflow">Overflow</span>
+                                        {% elif event.status == 'NEAR_FULL' %}
+                                            <span class="status-pill near-full">Near Full</span>
+                                        {% else %}
+                                            <span class="status-pill ok">OK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-mono">{{ event.confidence }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if not events %}
+                                <tr id="no-events-row">
+                                    <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-tertiary);">
+                                        No events yet — start detection to see data
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Sidebar -->
+            <div class="sidebar-panel">
+                <!-- Fill Level Gauge -->
+                <div class="gauge-card">
+                    <h4>📊 Average Fill Level</h4>
+
+                    <div class="gauge-ring">
+                        <svg width="140" height="140" viewBox="0 0 140 140">
+                            <circle class="gauge-ring-bg" cx="70" cy="70" r="58"></circle>
+                            <circle class="gauge-ring-fill" cx="70" cy="70" r="58"
+                                    id="gauge-fill"
+                                    stroke="var(--accent-green)"
+                                    stroke-dasharray="364.42"
+                                    stroke-dashoffset="364.42"></circle>
+                        </svg>
+                        <div class="gauge-ring-label">
+                            <div class="gauge-ring-value" id="gauge-value">0%</div>
+                            <div class="gauge-ring-text">Fill Level</div>
+                        </div>
+                    </div>
+
+                    <div class="gauge-legend">
+                        <div class="gauge-legend-item">
+                            <span class="gauge-legend-dot" style="background:var(--accent-green);"></span>
+                            OK
+                        </div>
+                        <div class="gauge-legend-item">
+                            <span class="gauge-legend-dot" style="background:var(--accent-orange);"></span>
+                            Near Full
+                        </div>
+                        <div class="gauge-legend-item">
+                            <span class="gauge-legend-dot" style="background:var(--accent-red);"></span>
+                            Overflow
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Distribution Chart -->
+                <div class="chart-card">
+                    <h4>📈 Status Distribution</h4>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="chart-distribution"></canvas>
+                    </div>
+                </div>
+
+                <!-- Detection Timeline Chart -->
+                <div class="chart-card">
+                    <h4>⏱️ Detection Timeline</h4>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="chart-timeline"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-text">
+                    © 2026 OverflowAI — Smart Cities Garbage Overflow Detection
+                </div>
+                <div class="footer-links">
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== SCRIPTS ==================== -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

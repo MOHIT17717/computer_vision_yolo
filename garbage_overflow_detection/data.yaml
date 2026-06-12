@@ -1,0 +1,8 @@
+path: C:/Users/mohit/Desktop/computer_vision/garbage_overflow_detection/data/india_bins
+train: train/images
+val: valid/images
+test: test/images
+nc: 2
+names:
+- not_overflow
+- overflow

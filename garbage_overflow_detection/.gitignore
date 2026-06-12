@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+runs/
+logs/
+datasets/
+models/
+weights/
+*.pt
+*.mp4
+*.avi
+*.mkv
+.DS_Store
